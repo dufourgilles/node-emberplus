@@ -40,6 +40,8 @@ export interface EmberClientOptions {
     logger?: LoggingService;
     host: string;
     port?: number;
+    keepAlive?: boolean;
+    keepAliveTimeout?: number;
 }
 
 export class EmberClient extends EventEmitter {
@@ -55,6 +57,8 @@ export class EmberClient extends EventEmitter {
     private _callback?: (e?: Error, data?: any) => void;
     private _requestID: number;
     private socket: S101Client;
+    private _keepAlive: boolean;
+    private _keepAliveInterval: number;
 
     private get logger(): LoggingService|null {
         return this._logger;
@@ -67,6 +71,8 @@ export class EmberClient extends EventEmitter {
         this._host = options.host;
         this._port = options.port || DEFAULT_PORT;
         this._logger = options.logger;
+        this._keepAlive = options.keepAlive || false;
+        this._keepAliveInterval = options.keepAliveTimeout || DEFAULT_TIMEOUT;
 
         // initialise internals data
         this._pendingRequests = [];
@@ -90,6 +96,10 @@ export class EmberClient extends EventEmitter {
         this.socket.on(S101ClientEvent.CONNECTED, () => {
             this.emit(EmberClientEvent.CONNECTED);
             this.socket.startDeadTimer();
+            if (this._keepAlive) {
+                this.socket.setKeepAliveInterval(this._keepAliveInterval);
+                this.socket.startKeepAlive();
+            }
             if (this._callback != null) {
                 this._callback();
             }
