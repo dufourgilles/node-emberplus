@@ -264,24 +264,28 @@ export class EmberClient extends EventEmitter {
                         throw new InvalidEmberResponseError(`getDirectory ${requestedPath}`);
                     }
                 } else if (node.getElementByPath(requestedPath) != null) {
-                    this.logger?.log(ClientLogs.GETDIRECTORY_RESPONSE(node));
-                    if (node.isStream()) {
-                        const streamIdentifier = (node as Parameter).streamIdentifier;
-                        const streamEntry = this._streams.getEntry(streamIdentifier);
-                        if (streamEntry != null && streamEntry.value !== requestedPath) {
-                            // Duplicate Stream Entry.
-                            this.logger?.log(ClientLogs.DUPLICATE_STREAM_IDENTIFIER(streamIdentifier, requestedPath, streamEntry.value));
-                        } else {
-                            this.logger?.log(ClientLogs.ADDING_STREAM_IDENTIFIER(streamIdentifier, requestedPath));
-                            this._streams.addEntry(
-                                new StreamEntry(
-                                    streamIdentifier,
-                                    requestedPath
-                                )
-                            );
+                    const resolved = node.getElementByPath(requestedPath);
+                    if (resolved != null) {
+                        this.logger?.log(ClientLogs.GETDIRECTORY_RESPONSE(resolved));
+
+                        if (resolved.isStream && resolved.isStream()) {
+                            const streamIdentifier = (resolved as Parameter).streamIdentifier;
+                            const streamEntry = this._streams.getEntry(streamIdentifier);
+                            if (streamEntry != null && streamEntry.value !== requestedPath) {
+                                // Duplicate Stream Entry.
+                                this.logger?.log(ClientLogs.DUPLICATE_STREAM_IDENTIFIER(streamIdentifier, requestedPath, streamEntry.value));
+                            } else {
+                                this.logger?.log(ClientLogs.ADDING_STREAM_IDENTIFIER(streamIdentifier, requestedPath));
+                                this._streams.addEntry(
+                                    new StreamEntry(
+                                        streamIdentifier,
+                                        requestedPath
+                                    )
+                                );
+                            }
                         }
+                        return resolved; // return the element, not the response root
                     }
-                    return node; // make sure the info is treated before going to next request.
                 } else {
                     const nodeElements = node?.getChildren();
                     if (nodeElements != null &&
